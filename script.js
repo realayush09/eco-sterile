@@ -2,6 +2,30 @@
 // EcoSterile pH Regulator Dashboard Script
 // ==========================================
 
+// =======================
+// Firebase Realtime Database
+// =======================
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-app.js";
+import {
+  getDatabase,
+  ref,
+  push,
+  onValue
+} from "https://www.gstatic.com/firebasejs/12.7.0/firebase-database.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyA6G8DgCBqA9lFMlKfGIC_JCEaZU-GuPxs",
+  authDomain: "eco-sterile.firebaseapp.com",
+  databaseURL: "https://eco-sterile-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "eco-sterile",
+  storageBucket: "eco-sterile.firebasestorage.app",
+  messagingSenderId: "429228597840",
+  appId: "1:429228597840:web:45c0f163c578480fc2a755"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getDatabase(app);
+
 // Data Storage
 let phData = {
   timestamps: [],
@@ -384,7 +408,11 @@ function addPHReading(pH) {
   updateChart();
   updateStats();
   updateLastUpdate();
-  saveData();
+  push(ref(db, "phReadings"), {
+    value: pH,
+    timestamp: new Date().toISOString()
+  });
+
 }
 
 // Simulate pump activation based on pH
@@ -661,8 +689,6 @@ document.addEventListener("DOMContentLoaded", function () {
   }
 
   // Wire Connect button (toggle connect/disconnect)
-  
-
   // Initialize Arduino status UI
   updateArduinoStatus(false);
 
@@ -948,6 +974,28 @@ document.addEventListener("DOMContentLoaded", function () {
       alert("✗ Incorrect answer. Password not reset.");
     }
   });
+  // =======================
+  // Firebase → Dashboard READ (STEP 3)
+  // =======================
+  onValue(ref(db, "phReadings"), (snapshot) => {
+    const data = snapshot.val();
+    if (!data) return;
+
+    // reset local arrays
+    phData.timestamps = [];
+    phData.values = [];
+
+    Object.values(data).forEach(entry => {
+      if (entry.timestamp && entry.value !== undefined) {
+        phData.timestamps.push(entry.timestamp);
+        phData.values.push(entry.value);
+      }
+    });
+
+    updateChart();
+    updateStats();
+  });
+
 });
 
 // ==========================================
